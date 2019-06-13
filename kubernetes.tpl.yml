@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample-application
+  labels:
+    app: sample-application
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sample-application
+  
+  # Pod template
+  template:
+    metadata:
+      labels:
+        app: sample-application
+    spec:
+      containers:
+        - name: test
+          image: registry.gitlab.com/prakashkumar3117/cicd-tutorial
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+      imagePullSecrets:
+        - name: gitlab-registry
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sample-application
+  labels:
+    app: sample-application
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+      name: http
+  selector:
+      app: sample-application

@@ -1,0 +1,53 @@
+image: docker:latest
+services: 
+  - docker:dind
+
+variables:
+  WORK_DIR: ${CI_PROJECT_NAME}
+  BRANCH: ${CI_COMMIT_REF_NAME}
+  REGISTRY: registry.gitlab.com/prakashkumar3117/cicd-tutorial:$CI_COMMIT_SHA
+#  KUBE_URL: 35.224.69.57
+#  KUBE_USER: prakashkumar3117@gmail.com
+#  KUBE_PASSSWORD: prakash@17
+
+stages:
+  - build
+  - test
+  - deploy
+
+build_project:
+    stage: build
+    script:
+        - docker login -u prakashkumar3117 -p -9WQo8YZJ6xQwCzpp51c registry.gitlab.com
+        - docker build -t $REGISTRY .
+        - docker push $REGISTRY
+
+test_project:
+    stage: test
+    script:
+        - docker login -u prakashkumar3117 -p -9WQo8YZJ6xQwCzpp51c registry.gitlab.com
+        - docker pull $REGISTRY
+        - docker run --name=$BRANCH -p 80:8080 -i $REGISTRY npm run ci
+ 
+ 
+deploy_project:
+  stage: deploy
+
+  script:
+    - apk add --no-cache curl
+    - curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+    - chmod +x ./kubectl
+    - mv ./kubectl /usr/local/bin/kubectl
+    
+    
+    
+    - kubectl config set-cluster demo-cluster --server="$KUBE_URL" --insecure-skip-tls-verify=true
+    - kubectl config set-credentials admin --username="$KUBE_USER" --password="$KUBE_PASSWORD"
+    - kubectl config set-context default --cluster=demo-cluster --user=admin
+    - kubectl config use-context default
+#    - kubectl get pods --all-namespaces
+    - 'printf "apiVersion: v1\nkind: Secret\n$(kubectl create secret docker-registry gitlab-registry --docker-server=$CI_REGISTRY --docker-username=prakashkumar3117 --docker-password=$prakash@17 --docker-email=prakashkumar3117@gmail.com -o yaml --dry-run)" | kubectl apply -f -'
+    - sed 's/_APP_NAME_/'"$CI_PROJECT_NAME"'/g; s/_VERSION_/'"$CI_COMMIT_SHA"'/g' kubernetes.tpl.yml > kubernetes.yml;
+    - kubectl apply -f kubernetes.yml
+ 
+ 
